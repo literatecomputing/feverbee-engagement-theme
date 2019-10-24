@@ -346,7 +346,7 @@ api.registerConnectorClass('below-site-header', 'experts-homepage', {
                             {{else}}
                               <li class="{{homeToDo_2_0_class}}">You've posted {{homeToDo_topicCount}} challenges / links - <a href="#" class="alwaysBright homepage-banner-link-share-link">share more</a></li>
                               <li class="{{homeToDo_2_1_class}}">You've helped answer {{homeToDo_replyCount}} questions - <a class="alwaysBright" href="/tags/challenges">answer more</a></li>
-                              <li class="{{homeToDo_2_2_class}}">Become a community MVP - <a href="mailto:richard@feverbee.com">get in touch</a></li>
+                              <li class="{{homeToDo_2_2_class}}">Become a community MVP - <a href="mailto:contact@example.com">get in touch</a></li>
                             {{/if}}
                             </ol>
                         </div>
@@ -487,8 +487,8 @@ $(document).ready(function(e) {
             // If logged in, click the "create topic" button
             $('#create-topic').click();
         } else {
-            // If logged out, navigate to the feverbee register page
-            window.location.href = "//www.feverbee.com/register";
+            // If logged out, navigate to the home page
+            window.location.href = "/";
         }
 
     });
@@ -503,9 +503,9 @@ $(document).ready(function(e) {
     $(".experts-homepage.ember-view").on("click", "#homepage-banner-link-get-help", function(e) {
 
         if (!Discourse.User.current()) {
-            // If logged out, navigate to the feverbee register page
+            // If logged out, navigate to the home page
             e.preventDefault();
-            window.location.href = "//www.feverbee.com/register";
+            window.location.href = "/";
         }
 
     });
