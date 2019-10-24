@@ -1,0 +1,17 @@
+{
+  "name": "Feverbee Custom Homepage",
+  "component": true,
+  "license_url": null,
+  "about_url": "https://experts.feverbee.com/t/code-template-of-feverbees-interactive-banner/9478/5?u=jay_pfaffman",
+  "authors": "Jay Pfaffman",
+  "theme_version": null,
+  "minimum_discourse_version": null,
+  "maximum_discourse_version": null,
+  "assets": {
+    "header-bg": "assets/big-header.jpeg",
+    "header": "assets/header.jpeg"
+  },
+  "color_schemes": {
+  },
+  "learn_more": "https://meta.discourse.org/t/beginners-guide-to-using-discourse-themes/91966"
+}

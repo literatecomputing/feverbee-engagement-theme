@@ -1,0 +1,514 @@
+<link href="//fonts.googleapis.com/css?family=Montserrat:300,400,500,700" rel="stylesheet">
+<script type="text/discourse-plugin" version="0.6">
+const ajax = require('discourse/lib/ajax').ajax;
+const Topic = require('discourse/models/topic').default;
+
+api.registerConnectorClass('below-site-header', 'experts-homepage', {
+    actions: {
+        createTopic(){
+            if (Discourse.User.current()){
+                api.container.lookup('controller:composer').open({action: "createTopic", draftKey: "createTopic"});
+            }
+            else {
+                return window.location = Discourse.getURL("/signup");
+            }
+        },
+        createChallenge(){
+            if (Discourse.User.current()){
+                api.container.lookup('controller:composer').open({action: "createTopic", draftKey: "createTopic", topicTags: "challenges"});
+            }
+            else {
+                return window.location = Discourse.getURL("/signup");
+            }
+        },
+        createLink(){
+            if (Discourse.User.current()){
+                api.container.lookup('controller:composer').open({action: "createTopic", draftKey: "createTopic", topicTags: "reading"});
+            }
+            else {
+                return window.location = Discourse.getURL("/signup");
+            }
+        },
+        search(){
+            let url = '/search';
+            const params = [];
+
+            if (this.searchTerm) {
+              let query = '';
+              query += `q=${encodeURIComponent(this.searchTerm)}`;
+              params.push(query);
+            }
+            if (params.length > 0) {
+              url = `${url}?${params.join("&")}`;
+            }
+            return window.location = Discourse.getURL(url);
+        },
+        hideHomepage(){
+            this.set('collapseHomepage', true);
+            $.cookie('collapse-homepage', true);
+            $('html').addClass('collapse-experts-homepage');
+        },
+        showHomepage(){
+            this.set('collapseHomepage', false);
+            $.cookie('collapse-homepage', false);
+            $('html').removeClass('collapse-experts-homepage');
+        }
+    },
+    shouldRender(args, component) {
+        return true;
+    },
+    setupComponent(args, component) {
+        if ($.cookie('collapse-homepage') == "true"){
+            component.set('collapseHomepage', true);
+            $('html').addClass('collapse-experts-homepage');
+        }
+        else{
+            component.set('collapseHomepage', false);
+            $('html').removeClass('collapse-experts-homepage');
+        }
+        component.set('hostname', window.location.hostname);
+
+
+
+        api.onPageChange((url, title) => {
+            if (url == "/"){
+                $('html').addClass('show-experts-homepage');
+                component.set('displayCustomHomepage', true);
+                $('#main-outlet a').click(function(event){
+                    $('.below-site-header-outlet.experts-homepage').addClass("hidden");
+                    component.set('displayCustomHomepage', false);
+                });
+                ajax("/c/3.json").then (function(result){
+                    topicListOne = [];
+                    var usersOne = result.users;
+                    result.topic_list.topics.slice(0,5).forEach(function(topic){
+                        topic.posters.forEach(function(poster){
+                            poster.user = $.grep(usersOne, function(e){ return e.id == poster.user_id; })[0];
+                        });
+                        topicListOne.push(Topic.create(topic));
+                    });
+                    component.set('topicListOne', topicListOne);
+                });
+                ajax("/c/2.json").then (function(result){
+                    topicListTwo = [];
+                    var usersTwo = result.users;
+                    result.topic_list.topics.slice(0,5).forEach(function(topic){
+                        topic.posters.forEach(function(poster){
+                            poster.user = $.grep(usersTwo, function(e){ return e.id == poster.user_id; })[0];
+                        });
+                        topicListTwo.push(Topic.create(topic));
+                    });
+                    component.set('topicListTwo', topicListTwo);
+                });
+                ajax("/latest.json?order=posts&ascending=true").then (function(result){
+                    component.set('topicListThree', result.topic_list.topics.slice(0,3));
+                });
+
+
+                // TO DO LISTS!
+
+                // Determine the state of our To Do list on the home page
+                let homeToDoThis = [
+                    [
+                        component.get("homeToDo_0"), // Still to complete?
+                        [false, false, false], // Individual checks
+                        false // Wait for AJAX before setting all done value?
+                    ],
+                    [
+                        component.get("homeToDo_1"),
+                        [false, false, false],
+                        true
+                    ],
+                    [
+                        component.get("homeToDo_2"),
+                        [false, false, false],
+                        false
+                    ]
+                ];
+
+                if (Discourse.User.current()) {
+
+                    // LIST ONE
+
+                    // Registered?
+                    homeToDoThis[0][1][0] = true;
+
+                    // Got help from your peers?
+                    if (Discourse.User.currentProp("topic_count") > 0) {
+                        homeToDoThis[0][1][1] = true;
+                    }
+
+                    // Used your experience to help others?
+                    if (Discourse.User.currentProp("reply_count") > 0) {
+                        homeToDoThis[0][1][2] = true;
+                    }
+
+                    // LIST TWO
+
+                    // Shared a useful resource? (Check cookie so we remove any "flash". AJAX query below updates this)
+                    if ($.cookie('homeToDoThis_1_0') == "true") {
+                        homeToDoThis[1][1][0] = true;
+                    } else {
+                        homeToDoThis[1][1][0] = false;
+                    }
+
+                    if (Discourse.User.currentProp("reply_count") > 4) {
+                        homeToDoThis[1][1][1] = true;
+                    }
+
+                    // Are we certified? (Check cookie so we remove any "flash". AJAX queries for group membership below)
+                    if ($.cookie('homeToDoThis_1_2') == "true") {
+                        homeToDoThis[1][1][2] = true;
+                    } else {
+                        homeToDoThis[1][1][2] = false;
+                    }
+
+
+                    // LIST THREE
+
+                    // You've posted X challenges (always true)
+                    homeToDoThis[2][1][0] = true;
+                    component.set("homeToDo_topicCount", Discourse.User.currentProp("topic_count"));
+
+                    // You've helped answer X questions (always true)
+                    homeToDoThis[2][1][1] = true;
+                    component.set("homeToDo_replyCount", Discourse.User.currentProp("reply_count"));
+
+
+                    // Are we a community MVP? (Moderator)
+                    if (Discourse.User.currentProp("moderator")) {
+                        homeToDoThis[2][1][2] = true;
+                    }
+
+                } else {
+                    homeToDoThis[0][0] = true;
+                }
+
+
+                if (Discourse.User.currentProp('username') == "pat.scullion") {
+                    homeToDoThis[0][1][1] = true;
+                }
+
+
+                for (var i = 0; i < homeToDoThis.length; i++) {
+
+                    var allDone = true;
+                    for (var j = 0; j < homeToDoThis[i][1].length; j++) {
+                        component.set("homeToDo_" + i + "_" + j, homeToDoThis[i][1][j]);
+                        if (homeToDoThis[i][1][j]) {
+                            component.set("homeToDo_" + i + "_" + j + "_class", "crossed");
+                        } else {
+                            component.set("homeToDo_" + i + "_" + j + "_class", "");
+                            allDone = false;
+                        }
+                    }
+
+                    homeToDoThis[i][0] = !allDone;
+                    component.set("homeToDo_" + i, homeToDoThis[i][0]);
+
+                }
+
+
+
+                // Shared a useful resource? (Has user posted at least once with a tag of "reading"?)
+                ajax("/search.json?q=tags%3Areading%20%40" + encodeURIComponent(Discourse.User.currentProp('username'))).then (function(result){
+
+                    if (result.posts.length > 0) {
+                       component.set("homeToDo_1_0", true);
+                       component.set("homeToDo_1_0_class", "crossed");
+                       $.cookie('homeToDoThis_1_0', true);
+                    } else {
+                       component.set("homeToDo_1_0", false);
+                       component.set("homeToDo_1_0_class", "");
+                       component.set("homeToDo_1", true);
+                       $.cookie('homeToDoThis_1_0', false);
+                    }
+
+                });
+
+                // Are we certified? (Has user got the "Certified" badge?)
+                ajax("/users/" + encodeURIComponent(Discourse.User.currentProp('username')) + ".json").then (function(result){
+
+                    var foundBadge = false;
+                    if (result.badges) {
+                        for (var i = 0; i < result.badges.length; i++) {
+                            if (result.badges[i].name = "Certified") foundBadge = true;
+                        }
+                    }
+
+
+                    if (foundBadge) {
+                       component.set("homeToDo_1_2", true);
+                       component.set("homeToDo_1_2_class", "crossed");
+                       $.cookie('homeToDoThis_1_2', true);
+
+                       // If all are set in our section, flag it all as done!
+                       if (component.get("homeToDo_1_0") && component.get("homeToDo_1_1")) {
+                           component.set("homeToDo_1", false);
+                       }
+
+
+                    } else {
+
+                        // No. What about the SCM private category?
+                        ajax("/search.json?q=%23forum-support%3Ascm").then (function(result){
+                            if (result.posts.length > 0) {
+                               component.set("homeToDo_1_2", true);
+                               component.set("homeToDo_1_2_class", "crossed");
+                               $.cookie('homeToDoThis_1_2', true);
+
+                               // If all are set in our section, flag it all as done!
+                               if (component.get("homeToDo_1_0") && component.get("homeToDo_1_1")) {
+                                  component.set("homeToDo_1", false);
+                               }
+
+                            } else {
+                                // No. What about the POC private category?
+                                ajax("/search.json?q=%23forum-support%3Apoc").then (function(result){
+                                    if (result.posts.length > 0) {
+                                       component.set("homeToDo_1_2", true);
+                                       component.set("homeToDo_1_2_class", "crossed");
+                                       $.cookie('homeToDoThis_1_2', true);
+
+                                       // If all are set in our section, flag it all as done!
+                                       if (component.get("homeToDo_1_0") && component.get("homeToDo_1_1")) {
+                                          component.set("homeToDo_1", false);
+                                       }
+                                    } else {
+                                       component.set("homeToDo_1_2", false);
+                                       component.set("homeToDo_1_2_class", "");
+                                       component.set("homeToDo_1", true);
+                                       $.cookie('homeToDoThis_1_2', false);
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                });
+
+            }
+            else {
+                $('html').removeClass('show-experts-homepage');
+                $('#main-outlet a').click(function(){
+                    if ($(this).attr('href') == "/"){
+                        component.set('displayCustomHomepage', true);
+                        $('.below-site-header-outlet.experts-homepage').removeClass("hidden");
+                    }
+                });
+                $('.d-header .title').click(function(){
+                    component.set('displayCustomHomepage', true);
+                    $('.below-site-header-outlet.experts-homepage').removeClass("hidden");
+                });
+                component.set('displayCustomHomepage', false);
+            }
+        });
+    }
+});
+</script>
+<script type='text/x-handlebars' data-template-name='/connectors/below-site-header/experts-homepage'>
+{{#if displayCustomHomepage}}
+    <div class="experts-homepage-wrapper">
+        <div id="homepage-banner">
+            <div id="homepage-banner-inner">
+                <div id="homepage-banner-content">
+                    <div id="homepage-banner-content-inner">
+
+    {{#if collapseHomepage}}
+                        {{#if homeToDo_0}}
+                            <h3 id="cover_subtitle_whatnext">Things to Do</h3>
+                        {{else}}
+                            <h3 id="cover_subtitle_whatnext">What Next?</h3>
+                        {{/if}}
+    {{else}}
+                        <h1 id="cover_title">Cover Title</h1>
+                        <h2 id="cover_subtitle">Cover Subtitle</h2>
+    {{/if}}
+                        <div id="homepage-banner-content-inner-list">
+                            <ol>
+                            {{#if homeToDo_0}}
+                              <li class="{{homeToDo_0_0_class}}">
+                              {{#if homeToDo_0_0}}
+                              Sign Up
+                              {{else}}
+                              <a href="/signup" id="homepage-banner-link-signup">Sign up</a>
+                              {{/if}}
+                              </li>
+                              <li class="{{homeToDo_0_1_class}}"><a href="/tags/challenges"
+                              id="homepage-banner-link-get-help">Link
+                              2</a> goes here</li>
+                              <li class="{{homeToDo_0_2_class}}">Use your experience to <a href="/signup" id="homepage-banner-link-help-others">help others</a></li>
+                            {{else if homeToDo_1}}
+                              <li class="{{homeToDo_1_0_class}}"><a href="#" class="homepage-banner-link-share-link">Share</a> a useful resource</li>
+                              <li class="{{homeToDo_1_1_class}}">Another <a href="/c">Link</a></li>
+                              <li class="{{homeToDo_1_2_class}}"><a href="https://google.com"
+                            target="_blank">Find things</a></li>
+                            {{else}}
+                              <li class="{{homeToDo_2_0_class}}">You've posted {{homeToDo_topicCount}} challenges / links - <a href="#" class="alwaysBright homepage-banner-link-share-link">share more</a></li>
+                              <li class="{{homeToDo_2_1_class}}">You've helped answer {{homeToDo_replyCount}} questions - <a class="alwaysBright" href="/tags/challenges">answer more</a></li>
+                              <li class="{{homeToDo_2_2_class}}">Become a community MVP - <a href="mailto:richard@feverbee.com">get in touch</a></li>
+                            {{/if}}
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {{#if collapseHomepage}}
+        {{#d-button action="showHomepage" id="show-homepage" class="btn" icon="plus"}} View Intro{{/d-button}}
+    {{else}}
+        {{#d-button action="hideHomepage" id="hide-homepage" class="btn" icon="minus"}}Seen It{{/d-button}}
+    {{/if}}
+
+    {{#if collapseHomepage}}
+
+    {{else}}
+
+    <div class="homepage-container">
+
+        <div class="container topic-lists">
+            <div class="wrap">
+                <div class="box box-2">
+                    <div class="header-wrapper">
+                        <h3 class="inline">Topic List One</h3>
+                        {{#d-button action="createChallenge" class="btn-primary btn right"}}POST{{/d-button}}
+                    </div>
+                    {{topic-list topics=topicListOne showPosters=true}}
+                    {{#if site.mobileView}}
+                        <a href="/tags/challenges" class="btn-primary btn full-width">MORE</a>
+                    {{/if}}
+                </div>
+                <div class="box box-2">
+                    <div class="header-wrapper">
+                        <h3 class="inline">TopicListTwo</h3>
+                        {{#d-button action="createLink" class="btn-primary btn right"}}SHARE LINK{{/d-button}}
+                    </div>
+                    {{topic-list topics=topicListTwo showPosters=true}}
+                    {{#if site.mobileView}}
+                        <a href="/tags/reading" class="btn-primary btn full-width">MORE</a>
+                    {{/if}}
+                </div>
+            </div>
+            {{#unless site.mobileView}}
+                <div class="wrap">
+                    <div class="box box-2">
+                        <a href="/tags/challenges" class="btn-primary btn full-width">MORE</a>
+                    </div>
+                    <div class="box box-2">
+                        <a href="/tags/reading" class="btn-primary btn full-width">MORE</a>
+                    </div>
+                </div>
+            {{/unless}}
+        </div>
+        <div class="container engagement-boxes center">
+            <div class="wrap">
+                <h2>Engagement Boxes</h2>
+                <div class="box box-4">
+                    <a href="/">
+                        <div class="icon-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72"><defs><style>.cls-1{fill:none;stroke:#f29d33;stroke-linecap:round;stroke-linejoin:round;stroke-width:3px;}</style></defs><title>Training_y</title><g id="Layer_2" data-name="Layer 2"><g id="Layer_1-2" data-name="Layer 1"><ellipse class="cls-1" cx="36" cy="13.48" rx="12.21" ry="12.47"/></g></g></svg>
+                        </div>
+                        <span>Box One</span>
+                    </a>
+                </div>
+                <div class="box box-4">
+                    <a href="/c/persuasion">
+                        <div class="icon-wrapper">
+
+                        </div>
+                        <span>Box 2</span>
+                    </a>
+                </div>
+                <div class="box box-4">
+                    <a href="/c/communities">
+                        <div class="icon-wrapper">
+
+                        </div>
+                        <span>Box 3</span>
+                    </a>
+                </div>
+                <div class="box box-4">
+                    <a href="/c/platforms-technology">
+                        <div class="icon-wrapper">
+
+                        </div>
+                        <span>Box 4</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="container help-people homepage-title center background-color">
+            <div class="wrap">
+                <h2>Topic List Three</h2>
+                <div class="container">
+                    <div class="postsContainerFlex">
+                        {{#each topicListThree as |topic|}}
+                            <div class="postContainer">
+                                <div class="postShadow">
+                                    <div class="image-section">
+                                        <a href="/t/{{topic.slug}}/{{topic.id}}/{{topic.last_read_post_number}}"><img src="/user_avatar/{{hostname}}/{{topic.last_poster_username}}/370/617_1.png" class="teammember_img" /></a>
+                                    </div>
+                                    <div class="postTitle">
+                                        <div class="postDate">{{format-date topic.created_at}}</div>
+                                        <a href="/t/{{topic.slug}}/{{topic.id}}/{{topic.last_read_post_number}}">{{topic.title}}</a>
+                                    </div>
+                                    <div class="postInfo">
+                                        <div class="postAuthor">by <a href="/users/{{topic.last_poster_username}}/activity">{{topic.last_poster_username}}</a></div>
+                                        <div class="postComments">
+                                            <span class="likes"><i class="fa fa-thumbs-up"></i>{{topic.like_count}}</span>
+                                            <a href="/t/{{topic.slug}}/{{topic.id}}/{{topic.last_read_post_number}}">
+                                                <span class="comments"><i class="fa fa-comments"></i>{{topic.posts_count}}</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {{/each}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{/if}}
+    </div>
+{{/if}}
+</script>
+<script type="text/javascript">
+$(document).ready(function(e) {
+
+    console.log(Discourse.User.current());
+
+    $(".experts-homepage.ember-view").on("click", "#homepage-banner-link-help-others", function(e) {
+        e.preventDefault();
+
+        if (Discourse.User.current()) {
+            // If logged in, click the "create topic" button
+            $('#create-topic').click();
+        } else {
+            // If logged out, navigate to the feverbee register page
+            window.location.href = "//www.feverbee.com/register";
+        }
+
+    });
+
+
+    $(".experts-homepage.ember-view").on("click", ".homepage-banner-link-share-link", function(e) {
+        e.preventDefault();
+        $('#create-topic').click();
+    });
+
+
+    $(".experts-homepage.ember-view").on("click", "#homepage-banner-link-get-help", function(e) {
+
+        if (!Discourse.User.current()) {
+            // If logged out, navigate to the feverbee register page
+            e.preventDefault();
+            window.location.href = "//www.feverbee.com/register";
+        }
+
+    });
+
+});
+</script>
