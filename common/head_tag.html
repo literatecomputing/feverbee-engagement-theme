@@ -5,44 +5,6 @@ const Topic = require('discourse/models/topic').default;
 
 api.registerConnectorClass('below-site-header', 'experts-homepage', {
     actions: {
-        createTopic(){
-            if (Discourse.User.current()){
-                api.container.lookup('controller:composer').open({action: "createTopic", draftKey: "createTopic"});
-            }
-            else {
-                return window.location = Discourse.getURL("/signup");
-            }
-        },
-        createChallenge(){
-            if (Discourse.User.current()){
-                api.container.lookup('controller:composer').open({action: "createTopic", draftKey: "createTopic", topicTags: "challenges"});
-            }
-            else {
-                return window.location = Discourse.getURL("/signup");
-            }
-        },
-        createLink(){
-            if (Discourse.User.current()){
-                api.container.lookup('controller:composer').open({action: "createTopic", draftKey: "createTopic", topicTags: "reading"});
-            }
-            else {
-                return window.location = Discourse.getURL("/signup");
-            }
-        },
-        search(){
-            let url = '/search';
-            const params = [];
-
-            if (this.searchTerm) {
-              let query = '';
-              query += `q=${encodeURIComponent(this.searchTerm)}`;
-              params.push(query);
-            }
-            if (params.length > 0) {
-              url = `${url}?${params.join("&")}`;
-            }
-            return window.location = Discourse.getURL(url);
-        },
         hideHomepage(){
             this.set('collapseHomepage', true);
             $.cookie('collapse-homepage', true);
@@ -67,8 +29,6 @@ api.registerConnectorClass('below-site-header', 'experts-homepage', {
             $('html').removeClass('collapse-experts-homepage');
         }
         component.set('hostname', window.location.hostname);
-
-
 
         api.onPageChange((url, title) => {
             if (url == "/"){
@@ -102,189 +62,6 @@ api.registerConnectorClass('below-site-header', 'experts-homepage', {
                 });
                 ajax("/latest.json?order=posts&ascending=true").then (function(result){
                     component.set('topicListThree', result.topic_list.topics.slice(0,3));
-                });
-
-
-                // TO DO LISTS!
-
-                // Determine the state of our To Do list on the home page
-                let homeToDoThis = [
-                    [
-                        component.get("homeToDo_0"), // Still to complete?
-                        [false, false, false], // Individual checks
-                        false // Wait for AJAX before setting all done value?
-                    ],
-                    [
-                        component.get("homeToDo_1"),
-                        [false, false, false],
-                        true
-                    ],
-                    [
-                        component.get("homeToDo_2"),
-                        [false, false, false],
-                        false
-                    ]
-                ];
-
-                if (Discourse.User.current()) {
-
-                    // LIST ONE
-
-                    // Registered?
-                    homeToDoThis[0][1][0] = true;
-
-                    // Got help from your peers?
-                    if (Discourse.User.currentProp("topic_count") > 0) {
-                        homeToDoThis[0][1][1] = true;
-                    }
-
-                    // Used your experience to help others?
-                    if (Discourse.User.currentProp("reply_count") > 0) {
-                        homeToDoThis[0][1][2] = true;
-                    }
-
-                    // LIST TWO
-
-                    // Shared a useful resource? (Check cookie so we remove any "flash". AJAX query below updates this)
-                    if ($.cookie('homeToDoThis_1_0') == "true") {
-                        homeToDoThis[1][1][0] = true;
-                    } else {
-                        homeToDoThis[1][1][0] = false;
-                    }
-
-                    if (Discourse.User.currentProp("reply_count") > 4) {
-                        homeToDoThis[1][1][1] = true;
-                    }
-
-                    // Are we certified? (Check cookie so we remove any "flash". AJAX queries for group membership below)
-                    if ($.cookie('homeToDoThis_1_2') == "true") {
-                        homeToDoThis[1][1][2] = true;
-                    } else {
-                        homeToDoThis[1][1][2] = false;
-                    }
-
-
-                    // LIST THREE
-
-                    // You've posted X challenges (always true)
-                    homeToDoThis[2][1][0] = true;
-                    component.set("homeToDo_topicCount", Discourse.User.currentProp("topic_count"));
-
-                    // You've helped answer X questions (always true)
-                    homeToDoThis[2][1][1] = true;
-                    component.set("homeToDo_replyCount", Discourse.User.currentProp("reply_count"));
-
-
-                    // Are we a community MVP? (Moderator)
-                    if (Discourse.User.currentProp("moderator")) {
-                        homeToDoThis[2][1][2] = true;
-                    }
-
-                } else {
-                    homeToDoThis[0][0] = true;
-                }
-
-
-                if (Discourse.User.currentProp('username') == "pat.scullion") {
-                    homeToDoThis[0][1][1] = true;
-                }
-
-
-                for (var i = 0; i < homeToDoThis.length; i++) {
-
-                    var allDone = true;
-                    for (var j = 0; j < homeToDoThis[i][1].length; j++) {
-                        component.set("homeToDo_" + i + "_" + j, homeToDoThis[i][1][j]);
-                        if (homeToDoThis[i][1][j]) {
-                            component.set("homeToDo_" + i + "_" + j + "_class", "crossed");
-                        } else {
-                            component.set("homeToDo_" + i + "_" + j + "_class", "");
-                            allDone = false;
-                        }
-                    }
-
-                    homeToDoThis[i][0] = !allDone;
-                    component.set("homeToDo_" + i, homeToDoThis[i][0]);
-
-                }
-
-
-
-                // Shared a useful resource? (Has user posted at least once with a tag of "reading"?)
-                ajax("/search.json?q=tags%3Areading%20%40" + encodeURIComponent(Discourse.User.currentProp('username'))).then (function(result){
-
-                    if (result.posts.length > 0) {
-                       component.set("homeToDo_1_0", true);
-                       component.set("homeToDo_1_0_class", "crossed");
-                       $.cookie('homeToDoThis_1_0', true);
-                    } else {
-                       component.set("homeToDo_1_0", false);
-                       component.set("homeToDo_1_0_class", "");
-                       component.set("homeToDo_1", true);
-                       $.cookie('homeToDoThis_1_0', false);
-                    }
-
-                });
-
-                // Are we certified? (Has user got the "Certified" badge?)
-                ajax("/users/" + encodeURIComponent(Discourse.User.currentProp('username')) + ".json").then (function(result){
-
-                    var foundBadge = false;
-                    if (result.badges) {
-                        for (var i = 0; i < result.badges.length; i++) {
-                            if (result.badges[i].name = "Certified") foundBadge = true;
-                        }
-                    }
-
-
-                    if (foundBadge) {
-                       component.set("homeToDo_1_2", true);
-                       component.set("homeToDo_1_2_class", "crossed");
-                       $.cookie('homeToDoThis_1_2', true);
-
-                       // If all are set in our section, flag it all as done!
-                       if (component.get("homeToDo_1_0") && component.get("homeToDo_1_1")) {
-                           component.set("homeToDo_1", false);
-                       }
-
-
-                    } else {
-
-                        // No. What about the SCM private category?
-                        ajax("/search.json?q=%23forum-support%3Ascm").then (function(result){
-                            if (result.posts.length > 0) {
-                               component.set("homeToDo_1_2", true);
-                               component.set("homeToDo_1_2_class", "crossed");
-                               $.cookie('homeToDoThis_1_2', true);
-
-                               // If all are set in our section, flag it all as done!
-                               if (component.get("homeToDo_1_0") && component.get("homeToDo_1_1")) {
-                                  component.set("homeToDo_1", false);
-                               }
-
-                            } else {
-                                // No. What about the POC private category?
-                                ajax("/search.json?q=%23forum-support%3Apoc").then (function(result){
-                                    if (result.posts.length > 0) {
-                                       component.set("homeToDo_1_2", true);
-                                       component.set("homeToDo_1_2_class", "crossed");
-                                       $.cookie('homeToDoThis_1_2', true);
-
-                                       // If all are set in our section, flag it all as done!
-                                       if (component.get("homeToDo_1_0") && component.get("homeToDo_1_1")) {
-                                          component.set("homeToDo_1", false);
-                                       }
-                                    } else {
-                                       component.set("homeToDo_1_2", false);
-                                       component.set("homeToDo_1_2_class", "");
-                                       component.set("homeToDo_1", true);
-                                       $.cookie('homeToDoThis_1_2', false);
-                                    }
-                                });
-                            }
-                        });
-                    }
-
                 });
 
             }
@@ -324,37 +101,10 @@ api.registerConnectorClass('below-site-header', 'experts-homepage', {
                         <h1 id="cover_title">Cover Title</h1>
                         <h2 id="cover_subtitle">Cover Subtitle</h2>
     {{/if}}
-                        <div id="homepage-banner-content-inner-list">
-                            <ol>
-                            {{#if homeToDo_0}}
-                              <li class="{{homeToDo_0_0_class}}">
-                              {{#if homeToDo_0_0}}
-                              Sign Up
-                              {{else}}
-                              <a href="/signup" id="homepage-banner-link-signup">Sign up</a>
-                              {{/if}}
-                              </li>
-                              <li class="{{homeToDo_0_1_class}}"><a href="/tags/challenges"
-                              id="homepage-banner-link-get-help">Link
-                              2</a> goes here</li>
-                              <li class="{{homeToDo_0_2_class}}">Use your experience to <a href="/signup" id="homepage-banner-link-help-others">help others</a></li>
-                            {{else if homeToDo_1}}
-                              <li class="{{homeToDo_1_0_class}}"><a href="#" class="homepage-banner-link-share-link">Share</a> a useful resource</li>
-                              <li class="{{homeToDo_1_1_class}}">Another <a href="/c">Link</a></li>
-                              <li class="{{homeToDo_1_2_class}}"><a href="https://google.com"
-                            target="_blank">Find things</a></li>
-                            {{else}}
-                              <li class="{{homeToDo_2_0_class}}">You've posted {{homeToDo_topicCount}} challenges / links - <a href="#" class="alwaysBright homepage-banner-link-share-link">share more</a></li>
-                              <li class="{{homeToDo_2_1_class}}">You've helped answer {{homeToDo_replyCount}} questions - <a class="alwaysBright" href="/tags/challenges">answer more</a></li>
-                              <li class="{{homeToDo_2_2_class}}">Become a community MVP - <a href="mailto:contact@example.com">get in touch</a></li>
-                            {{/if}}
-                            </ol>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
     {{#if collapseHomepage}}
         {{#d-button action="showHomepage" id="show-homepage" class="btn" icon="plus"}} View Intro{{/d-button}}
     {{else}}
