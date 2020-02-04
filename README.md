@@ -7,4 +7,6 @@ described in
 Jay Pfaffman downloaded the theme, removed Feverbee-specific elements
 and published it here.
 
-Before using this theme you will need to make modifications to customize it for use on your site.
+This theme is intended as a starting point only. Before using this
+theme you will need to make modifications to customize it for use on
+your site. Have a look at [How to add a featured topic list to your Discourse Homepage](https://meta.discourse.org/t/how-to-add-a-featured-topic-list-to-your-discourse-homepage/132949) for some more information.
