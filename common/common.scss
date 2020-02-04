@@ -79,9 +79,6 @@
 .postComments {
     float: right;
 }
-.likes, .views {
-    margin-right: 10px;
-}
 .experts-homepage-wrapper{
     position: relative;
     top: 68px;
@@ -294,11 +291,6 @@
 .center{
     text-align: center;
 }
-
-
-
-/* Updated banner 2018 */
-
 #homepage-banner {
     width: 100%;
     margin-bottom: 18px;
@@ -390,8 +382,6 @@
     width: 100%;
 }
 
-
-
 #homepage-banner-content-inner ol {
     font-size: 1em;
     margin: 0;
@@ -437,13 +427,10 @@
     opacity: 1;
 }
 
-
 #homepage-banner-content-inner ol li a:hover {
     color: #fff;
     text-decoration: underline;
 }
-
-
 
 @media screen and (min-width: 1600px) {
 
@@ -468,8 +455,6 @@
 }
 
 @media screen and (max-width: 600px) {
-
-
 
     #homepage-banner-content {
         font-size: 0.8em;
